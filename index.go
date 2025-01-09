@@ -2,35 +2,134 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
 )
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 func root(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, "Welcome to our API")
 }
+
+func transcriptHandler(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	req.ParseForm()
+
+	// Validate required form fields
+	Username, userOk := req.Form["Username"]
+	speakersExpected, speakersOk := req.Form["speakers_expected"]
+	language, langOk := req.Form["language"]
+
+	if !userOk || !speakersOk || !langOk || len(Username[0]) == 0 || len(speakersExpected[0]) == 0 || len(language[0]) == 0 {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+
+	err := req.ParseMultipartForm(10 << 20) // 10 MB limit
+	if err != nil {
+		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
+		return
+	}
+
+	file, handler, err := req.FormFile("file")
+	if err != nil {
+		http.Error(w, "Error retrieving the file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Generate timestamp and create a directory with timestamp
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	uploadDir := filepath.Join("uploads", Username[0], timestamp)
+
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		http.Error(w, "Error creating directory", http.StatusInternalServerError)
+		return
+	}
+
+	// Save the uploaded file
+	savePath := filepath.Join(uploadDir, handler.Filename)
+	outFile, err := os.Create(savePath)
+	if err != nil {
+		http.Error(w, "Error saving the file", http.StatusInternalServerError)
+		return
+	}
+	defer outFile.Close()
+
+	_, err = io.Copy(outFile, file)
+	if err != nil {
+		http.Error(w, "Error copying the file", http.StatusInternalServerError)
+		return
+	}
+
+	audioOutputPath := filepath.Join(uploadDir, "audio.wav")
+	transcriptFileName := filepath.Join(uploadDir, "transcript.txt")
+
+	// Use channels for concurrency
+	done := make(chan error)
+
+	// Start audio extraction concurrently
+	go func() {
+		cmd := exec.Command("ffmpeg", "-i", savePath, "-vn", "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "2", audioOutputPath)
+		cmdOutput, cmdErr := cmd.CombinedOutput()
+		if cmdErr != nil {
+			done <- fmt.Errorf("Error converting file with ffmpeg: %v\nOutput: %s", cmdErr, cmdOutput)
+			return
+		}
+		done <- nil
+	}()
+
+	// Wait for audio extraction to finish before transcription
+	if err := <-done; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Perform transcription (assuming transcription is synchronous)
+	transcripter := transcription(audioOutputPath, speakersExpected[0], language[0])
+
+	// Save the transcript concurrently
+	go func() {
+		saveFileErr := os.WriteFile(transcriptFileName, []byte(transcripter), 0644)
+		done <- saveFileErr
+	}()
+
+	// Wait for transcript to finish writing
+	if err := <-done; err != nil {
+		http.Error(w, "Error writing transcript to file", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintf(w, "%s\n", transcripter)
+}
+
 func main() {
 	mainRouter := http.NewServeMux()
 
-	transcriptRouter := http.NewServeMux()
-	transcriptRouter.HandleFunc("/transcript", func(w http.ResponseWriter, req *http.Request) {
-		/*
-			Todo:
-				we want to send a file (video or audio) to this router. Then call the trancript function
-
-				REMEMBER: transcript requires 3 parameters -> transcription("filename", speakers, language_code)
-		*/
-		if req.Method == http.MethodPost {
-			req.ParseForm()
-			fmt.Fprintf(w, "Received POST data: %v\n", req.Form)
-		} else {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-		}
-		//fmt.Fprintf(w, transcription("./german.wav", 5, "de"))
-	})
-
-	mainRouter.Handle("/transcript", transcriptRouter)
-
 	mainRouter.HandleFunc("/", root)
+	mainRouter.HandleFunc("/transcript", transcriptHandler)
+
 	fmt.Println("Server started at http://localhost:8085")
-	http.ListenAndServe(":8085", mainRouter)
+	http.ListenAndServe(":8085", corsMiddleware(mainRouter))
 }

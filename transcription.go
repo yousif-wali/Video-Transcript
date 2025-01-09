@@ -5,10 +5,10 @@ import (
 	"os/exec"
 )
 
-func transcription(filepath string, speakers_expected int, language_code string) string {
-	speakersStr := fmt.Sprintf("%d", speakers_expected)
+func transcription(filepath string, speakers_expected string, language_code string) string {
+	//speakersStr := fmt.Sprintf("%d", speakers_expected)
 
-	cmd := exec.Command("Python3", "./index.py", filepath, speakersStr, language_code)
+	cmd := exec.Command("Python3", "./index.py", filepath, speakers_expected, language_code)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
