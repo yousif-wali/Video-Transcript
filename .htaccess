@@ -1,0 +1,12 @@
+RewriteEngine on
+
+# Redirect /APIs to Validator.php
+RewriteRule ^APIs$ ./Validator.php [L,NC]
+
+# Redirect root access to index.php
+RewriteRule ^$ ./index.php [L,NC]
+
+# Redirect /Login to Login.php
+RewriteRule ^Login$ ./Login.php [L,NC]
+
+RewriteRule ^Signup$ ./Signup.php [L,NC]
