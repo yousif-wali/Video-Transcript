@@ -1,3 +1,4 @@
+<?php session_start();?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,15 +69,23 @@
 </head>
 <body>
     <div class="login-container">
+    <div class="text-danger">
+            <?php 
+            if(isset($_SESSION["error"])) {
+                echo $_SESSION["error"];
+                unset($_SESSION["error"]);
+            }
+            ?>
+        </div>
         <div class="login-title">Login</div>
-        <form action="validator.php" method="POST">
+        <form action="./Functions" method="POST">
             <div class="mb-3">
                 <input type="text" class="form-control" name="Username" placeholder="Username" required>
             </div>
             <div class="mb-3">
                 <input type="password" class="form-control" name="Password" placeholder="Password" required>
             </div>
-            <button class="login-btn" type="submit">Login</button>
+            <button class="login-btn" type="submit" name="Login">Login</button>
         </form>
         <div class="form-footer">
             <p>Don't have an account? <a href="./Signup">Sign Up</a></p>

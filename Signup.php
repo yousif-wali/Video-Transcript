@@ -1,3 +1,6 @@
+<?php
+session_start();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,17 +71,25 @@
 </head>
 <body>
     <div class="signup-container">
+        <div class="text-danger">
+            <?php 
+            if(isset($_SESSION["error"])) {
+                echo $_SESSION["error"];
+                unset($_SESSION["error"]);
+            }
+            ?>
+        </div>
         <div class="signup-title">Signup</div>
-        <form action="validator.php" method="POST">
+        <form action="./Functions" method="POST">
             <input type="hidden" name="api" value="signup">
             <div class="mb-3">
-                <input type="text" class="form-control" name="Username" placeholder="Username" required>
+                <input type="text" class="form-control" name="Username" placeholder="Username" required >
             </div>
             <div class="mb-3">
                 <input type="email" class="form-control" name="Email" placeholder="Email" required>
             </div>
             <div class="mb-3">
-                <input type="password" class="form-control" name="Password" placeholder="Password" required>
+                <input type="password" class="form-control" name="Password" placeholder="Password" minlength="8" required>
             </div>
             <div class="mb-3">
                 <input type="password" class="form-control" name="Confirm_Password" placeholder="Confirm Password" required>
@@ -91,7 +102,7 @@
                     <option value="Other">Other</option>
                 </select>
             </div>
-            <button class="signup-btn" type="submit">Sign Up</button>
+            <button class="signup-btn" type="submit" name="Signup">Sign Up</button>
         </form>
         <div class="form-footer">
             <p>Already have an account? <a href="./Login">Login Here</a></p>

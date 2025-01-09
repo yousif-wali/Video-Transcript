@@ -1,6 +1,6 @@
 <?php
 session_start();
-if(!isset($_SESSION["Username"])){
+if (!isset($_SESSION["Username"])) {
     header("Location: ./Login");
 }
 ?>
@@ -32,11 +32,72 @@ if(!isset($_SESSION["Username"])){
             text-align: center;
             margin-bottom: 1.5rem;
         }
+        /* Avatar styling */
+        .avatar-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+        }
+
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #007bff;
+        }
+
+        .tooltip-content {
+            display: none;
+            position: absolute;
+            top: 60px;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            text-align: center;
+        }
+
+        .tooltip-content p {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .tooltip-content a {
+            margin-top: 8px;
+            display: inline-block;
+        }
     </style>
+    <script>
+        function toggleTooltip() {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.style.display = tooltip.style.display === 'block' ? 'none' : 'block';
+        }
+    </script>
 </head>
 <body>
+    <!-- Avatar Section -->
+    <div class="avatar-container">
+        <img src="https://www.w3schools.com/howto/img_avatar.png" alt="User Avatar" class="avatar" onclick="toggleTooltip()">
+        <div id="tooltip" class="tooltip-content">
+            <p><?php echo htmlspecialchars($_SESSION["Username"]); ?></p>
+            <a class="btn btn-danger btn-sm" href="./Logout">Logout</a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
     <div class="form-container">
         <h1 class="form-title">AI Transcriptor</h1>
+        <h5 class="form-title">Credit:   <?php echo $_SESSION["Points"];?></h5>
+        <?php
+            if(isset($_SESSION['error'])){
+                $error = $_SESSION["error"];
+                echo "<p class='text-danger'>$error</p>";
+                unset($_SESSION["error"]);
+            }
+        ?>
         <form action="./APIs" method="POST" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="file" class="form-label">Upload File</label>

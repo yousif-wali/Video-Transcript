@@ -1,49 +1,41 @@
 <?php
 session_start();
 
-// Logout logic corrected
-if (isset($_REQUEST["Logout"])) {
-    session_unset();
-    session_destroy();
-    header("Location: ./");
-    exit();
-}
 
 try {
+    include_once "./Database.php";
     $url = "http://localhost:8085";
     $data = [];
+
+    $speakers = $_POST["speakers_expected"];
+    $language = $_POST["language"];
+    $username = $_SESSION["Username"];
 
     if (!isset($_POST["api"])) {
         throw new Exception("Invalid API Request");
     }
 
+    if($_SESSION["Points"] == 0){
+        throw new Exception("Not enough credit left");
+    }
+    $query = "call DecrementPoints(?)";
+    $stmt = mysqli_prepare($conn, $query);
+
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "s", $username);
+        if (mysqli_stmt_execute($stmt)) {
+            echo "Points decremented successfully!";
+        } else {
+            throw new Exception("Could not process #106");
+        }
+    } else {
+        throw new Exception("Could not process #107");
+    }
+
     switch ($_POST["api"]) {
-        case "signup":
-            if ($_POST["Password"] != $_POST["Confirm_Password"]) {
-                setcookie("passwordsDonotMatch", true, time() + 15, "/");
-                header("Location: ./Signup");
-                exit("Passwords do not match");
-            }
-            $data = [
-                "Username" => $_POST['Username'],
-                "Password" => $_POST["Password"],
-                "Email"    => $_POST["Email"],
-                "Gender"   => $_POST["Gender"]
-            ];
-            break;
-
-        case "login":
-            $data = [
-                "Username" => $_POST["Username"],
-                "Password" => $_POST["Password"]
-            ];
-            break;
-
         case "transcript":
             if (isset($_FILES["file"]) && $_FILES["file"]["error"] === UPLOAD_ERR_OK) {
-                $speakers = $_POST["speakers_expected"];
-                $language = $_POST["language"];
-                $url .= "/transcript?Username=Rayan&speakers_expected=$speakers&language=$language";
+                $url .= "/transcript?Username=$username&speakers_expected=$speakers&language=$language";
                 $data = [
                     "file" => new CURLFile($_FILES["file"]["tmp_name"], $_FILES["file"]["type"], $_FILES["file"]["name"])
                 ];
@@ -53,7 +45,7 @@ try {
             break;
 
         default:
-            echo "Error Code: 102";
+            throw new Exception("Code: 102");
             exit();
     }
 
@@ -77,10 +69,35 @@ try {
     } else {
         $_SESSION["response"] = $response;
     }
+    $query = "SELECT * FROM Points WHERE Username = ?";
+    $stmt = mysqli_prepare($conn, $query);
+    if($stmt){
+    mysqli_stmt_bind_param($stmt, "s", $username);
+    if(mysqli_stmt_execute($stmt)){
+        $result = mysqli_stmt_get_result($stmt);
+        if(mysqli_num_rows($result)){
+            $row = mysqli_fetch_assoc($result);
+            $_SESSION["Points"] = $row["Point"];
+        }else{
+             $_SESSION["Points"] = 0;
+                               
+        }
+    }
+    }
+
+    $query = "INSERT INTO txn (Username, Filename, Result) Values(?, ?, ?)";
+    $stmt = mysqli_prepare($conn, $query);
+    if($stmt){
+        mysqli_stmt_bind_param($stmt, "sss", $username, $_FILES["file"]["name"], $response);
+        if(!mysqli_stmt_execute($stmt)){
+            throw new Exception("Could not process #110");
+        }
+    }
 
     curl_close($ch);
 } catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
+    $_SESSION["error"] = "Error: " . $e->getMessage();
+    header("Location: ./");
     exit();
 }finally{
     header("Location: ./");
