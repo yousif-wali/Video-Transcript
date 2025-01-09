@@ -79,6 +79,9 @@ if (!isset($_SESSION["Username"])) {
 </head>
 <body>
     <!-- Avatar Section -->
+    <div style="position: absolute; top: 10px; left: 10px;">
+        <button class="btn btn-primary"><a href="./Pricing" style="text-decoration:none; color:white;">Buy Credits</a></button>
+    </div>
     <div class="avatar-container">
         <img src="https://www.w3schools.com/howto/img_avatar.png" alt="User Avatar" class="avatar" onclick="toggleTooltip()">
         <div id="tooltip" class="tooltip-content">
@@ -125,5 +128,7 @@ if (!isset($_SESSION["Username"])) {
             <textarea class="form-control" id="response" readonly><?php echo isset($_SESSION["response"]) ? htmlspecialchars($_SESSION["response"]) : ''; ?></textarea>
         </div>
     </div>
+
+    <p style="position:absolute; bottom: 10px; left: 10px">Created By: Yousif Wali <a href="https://donate.stripe.com/8wM3d84pX52n5R6eUU">Donate</a></p>
 </body>
 </html>

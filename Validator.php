@@ -1,7 +1,6 @@
 <?php
 session_start();
 
-
 try {
     include_once "./Database.php";
     $url = "http://localhost:8085";
@@ -15,23 +14,34 @@ try {
         throw new Exception("Invalid API Request");
     }
 
-    if($_SESSION["Points"] == 0){
+    // Check if the user has enough points
+    if ($_SESSION["Points"] - 1 < 0) {
         throw new Exception("Not enough credit left");
     }
-    $query = "call DecrementPoints(?)";
-    $stmt = mysqli_prepare($conn, $query);
 
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "s", $username);
-        if (mysqli_stmt_execute($stmt)) {
-            echo "Points decremented successfully!";
-        } else {
-            throw new Exception("Could not process #106");
-        }
+    // Ensure connection is alive, reconnect if needed
+    if (!mysqli_ping($conn)) {
+        mysqli_close($conn);
+        include_once "./Database.php"; // Reconnect
+    }
+
+    // Call the stored procedure to decrement points
+    $queryPoint = "CALL DecrementPoints(?)";
+    $stmtPoint = mysqli_prepare($conn, $queryPoint);
+    if ($stmtPoint) {
+        mysqli_stmt_bind_param($stmtPoint, "s", $username);
+        mysqli_stmt_execute($stmtPoint);
+        // Fetch all results to avoid 'Commands out of sync'
+        do {
+            mysqli_stmt_store_result($stmtPoint);
+        } while (mysqli_stmt_next_result($stmtPoint));
+
+        mysqli_stmt_close($stmtPoint);
     } else {
         throw new Exception("Could not process #107");
     }
 
+    // Handle API requests and file upload
     switch ($_POST["api"]) {
         case "transcript":
             if (isset($_FILES["file"]) && $_FILES["file"]["error"] === UPLOAD_ERR_OK) {
@@ -46,7 +56,6 @@ try {
 
         default:
             throw new Exception("Code: 102");
-            exit();
     }
 
     // Initialize cURL request
@@ -54,7 +63,6 @@ try {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
 
-    // Check if it's a file upload for transcript
     if ($_POST["api"] == "transcript") {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
     } else {
@@ -69,29 +77,33 @@ try {
     } else {
         $_SESSION["response"] = $response;
     }
-    $query = "SELECT * FROM Points WHERE Username = ?";
+
+    $query = "SELECT Point FROM Points WHERE Username = ?";
     $stmt = mysqli_prepare($conn, $query);
-    if($stmt){
-    mysqli_stmt_bind_param($stmt, "s", $username);
-    if(mysqli_stmt_execute($stmt)){
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "s", $username);
+        mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
-        if(mysqli_num_rows($result)){
-            $row = mysqli_fetch_assoc($result);
+
+        if ($row = mysqli_fetch_assoc($result)) {
             $_SESSION["Points"] = $row["Point"];
-        }else{
-             $_SESSION["Points"] = 0;
-                               
+        } else {
+            $_SESSION["Points"] = 0;
         }
-    }
+
+        mysqli_stmt_free_result($stmt);
+        mysqli_stmt_close($stmt);
     }
 
-    $query = "INSERT INTO txn (Username, Filename, Result) Values(?, ?, ?)";
-    $stmt = mysqli_prepare($conn, $query);
-    if($stmt){
-        mysqli_stmt_bind_param($stmt, "sss", $username, $_FILES["file"]["name"], $response);
-        if(!mysqli_stmt_execute($stmt)){
-            throw new Exception("Could not process #110");
+    // Insert transaction data into the txn table
+    $queryTxn = "INSERT INTO txn (Username, Filename, Result) VALUES (?, ?, ?)";
+    $stmtTxn = mysqli_prepare($conn, $queryTxn);
+    if ($stmtTxn) {
+        mysqli_stmt_bind_param($stmtTxn, "sss", $username, $_FILES["file"]["name"], $response);
+        if (!mysqli_stmt_execute($stmtTxn)) {
+            throw new Exception("Could not process transaction #110");
         }
+        mysqli_stmt_close($stmtTxn);
     }
 
     curl_close($ch);
@@ -99,7 +111,8 @@ try {
     $_SESSION["error"] = "Error: " . $e->getMessage();
     header("Location: ./");
     exit();
-}finally{
+} finally {
     header("Location: ./");
+    exit();
 }
 ?>

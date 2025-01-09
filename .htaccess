@@ -13,6 +13,8 @@ RewriteRule ^Signup$ ./Signup.php [L,NC]
 
 RewriteRule ^Logout ./include.php?logout=true
 
+RewriteRule ^Pricing ./Price.html
+
 RewriteRule ^Functions ./include.php [L,NC]
 php_flag  log_errors on
 php_flag display_errors on
