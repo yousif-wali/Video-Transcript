@@ -8,11 +8,11 @@ import (
 func transcription(filepath string, speakers_expected string, language_code string) string {
 	//speakersStr := fmt.Sprintf("%d", speakers_expected)
 
-	cmd := exec.Command("Python3", "./index.py", filepath, speakers_expected, language_code)
+	cmd := exec.Command("python3", "./index.py", filepath, speakers_expected, language_code)
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
-		fmt.Println("Error " + err.Error())
+		fmt.Println("Error " + err.Error() + " " + string(output))
 		return ""
 	}
 	fmt.Println(string(output))

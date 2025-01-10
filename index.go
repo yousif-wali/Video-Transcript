@@ -31,6 +31,7 @@ func root(w http.ResponseWriter, req *http.Request) {
 func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -43,18 +44,21 @@ func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 
 	if !userOk || !speakersOk || !langOk || len(Username[0]) == 0 || len(speakersExpected[0]) == 0 || len(language[0]) == 0 {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	err := req.ParseMultipartForm(10 << 20) // 10 MB limit
 	if err != nil {
 		http.Error(w, "Error parsing form data", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	file, handler, err := req.FormFile("file")
 	if err != nil {
 		http.Error(w, "Error retrieving the file", http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer file.Close()
@@ -65,6 +69,7 @@ func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		http.Error(w, "Error creating directory", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -73,6 +78,7 @@ func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 	outFile, err := os.Create(savePath)
 	if err != nil {
 		http.Error(w, "Error saving the file", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	defer outFile.Close()
@@ -80,6 +86,7 @@ func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 	_, err = io.Copy(outFile, file)
 	if err != nil {
 		http.Error(w, "Error copying the file", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -95,6 +102,7 @@ func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 		cmdOutput, cmdErr := cmd.CombinedOutput()
 		if cmdErr != nil {
 			done <- fmt.Errorf("Error converting file with ffmpeg: %v\nOutput: %s", cmdErr, cmdOutput)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		done <- nil
@@ -103,6 +111,7 @@ func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 	// Wait for audio extraction to finish before transcription
 	if err := <-done; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -118,9 +127,10 @@ func transcriptHandler(w http.ResponseWriter, req *http.Request) {
 	// Wait for transcript to finish writing
 	if err := <-done; err != nil {
 		http.Error(w, "Error writing transcript to file", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "%s\n", transcripter)
 }
 
@@ -130,6 +140,6 @@ func main() {
 	mainRouter.HandleFunc("/", root)
 	mainRouter.HandleFunc("/transcript", transcriptHandler)
 
-	fmt.Println("Server started at http://localhost:8085")
-	http.ListenAndServe(":8085", corsMiddleware(mainRouter))
+	fmt.Println("Server started at http://0.0.0.0:8085")
+	http.ListenAndServe("0.0.0.0:8085", corsMiddleware(mainRouter))
 }

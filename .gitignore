@@ -5,3 +5,5 @@
 *.mp3
 .DS_Store
 uploads/*
+*.pem
+./myapp
