@@ -3,7 +3,7 @@ session_start();
 
 try {
     include_once "./Database.php";
-    $url = "http://localhost:8085";
+    $url = "http://51.20.105.110:8085";
     $data = [];
 
     $speakers = $_POST["speakers_expected"];

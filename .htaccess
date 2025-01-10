@@ -18,3 +18,19 @@ RewriteRule ^Pricing ./Price.html
 RewriteRule ^Functions ./include.php [L,NC]
 php_flag  log_errors on
 php_flag display_errors on
+
+RewriteRule ^webhook ./api.php
+
+
+# .htaccess file to log 500 errors
+
+# Enable error logging for 500 errors
+ErrorDocument 500 /error500.html
+
+# Define the error log file location
+RewriteCond %{REQUEST_URI} !^/error500.html$
+RewriteCond %{ENV:REDIRECT_STATUS} =500
+RewriteRule ^.*$ /error500.html [L]
+
+# Log 500 errors to a specified file
+CustomLog /path/to/your/logs/http_500_errors.log combined

@@ -10,6 +10,12 @@ if (!isset($_SESSION["Username"])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Transcriptor</title>
+    <meta property="og:title" content="AI Transcriptor">
+    <meta property="og:description" content="This tools helps with converting videos into texts.">
+    <meta property="og:image" content="./video-transcript.webp">
+    <meta property="og:url" content="https://transcript.yousifwali.tech">
+    <meta property="og:type" content="website">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <style>
@@ -116,7 +122,15 @@ if (!isset($_SESSION["Username"])) {
                 <select id="language" class="form-control" name="language">
                     <option value="en_us" selected>English (US)</option>
                     <option value="de">German</option>
-                    <option value="ar">Arabic</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="hi">Hindi</option>
+                    <option value="ja">Japanese</option>
+                    <option value="zh">Chinese</option>
+                    <option value="ko">Korean</option>
+                    <option value="ar">Arabic (Needs Improvement)</option>
                 </select>
             </div>
             <div class="text-center">
